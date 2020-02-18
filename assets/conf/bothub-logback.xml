@@ -1,0 +1,24 @@
+<configuration debug="FALSE"> 
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    <property name="logFolder" value="log/"/>
+    
+    <appender name="out_file" class="ch.qos.logback.core.FileAppender">
+        <file>${logFolder}/bothub-logfile.log</file>
+        <encoder>
+            <Pattern>%date %-5level [%thread] %logger [%file:%line] %message%n</Pattern>
+        </encoder>
+    </appender>
+    
+    <appender name="out_console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <Pattern>%date{HH:mm:ss.SSS} %-5level [%thread] %message%n</Pattern>
+        </encoder>
+    </appender>
+    
+    <root level="debug">
+        <appender-ref ref="out_file" />
+        <appender-ref ref="out_console" />
+    </root>
+    
+    <logger name="io.netty" level="INFO"/>
+</configuration>

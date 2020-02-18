@@ -1,0 +1,108 @@
+plugins {
+    id 'java'
+}
+
+defaultTasks('clean', 'build')
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+group = 'forfun.sandbox.sample'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile (
+        'io.netty:netty-all:4.1.+',
+        'org.aeonbits.owner:owner-java8:1.0.+',
+        'com.google.inject:guice:4.2.+',
+        'com.google.guava:guava:28.1-jre',
+        'com.google.protobuf:protobuf-java-util:3.11.+',
+        'com.google.flatbuffers:flatbuffers-java:1.11.0',
+        'com.google.code.gson:gson:2.8.6',
+        'ch.qos.logback:logback-classic:1.2.+',
+        'org.dyn4j:dyn4j:3.3.+',
+    )
+    testCompile( 
+        'junit:junit:4.+',
+        'org.mockito:mockito-core:3.+'
+    )
+    compileOnly 'org.projectlombok:lombok:1.18.+'
+    annotationProcessor 'org.projectlombok:lombok:1.18.+'  
+}
+
+def fileName = new Date().format("yyMMddHHmm") + '-UWNS'
+
+def manifestClasspath = configurations.runtime.collect({ '../libs/' + it.getName() }).join(' ')
+
+def generalManifest = manifest {
+    attributes('Built-By': System.getProperty('user.name'),
+        'Built-Date': new Date().format("yyyy-MM-dd HH:mm:ss"),
+	'Implementation-URL': 'https://github.com/ForFun-Sandbox/Unity-with-Netty-sample/',
+	'Class-Path': manifestClasspath + ' ' + 'shared.jar'
+    )
+}
+
+clean {
+    delete file("${project.rootDir}\\deploy")
+}
+
+jar {
+    archiveName = 'shared.jar'
+    exclude('**/uwns/bothub/**')
+    exclude('**/uwns/node/**')
+}
+
+task nodeJar(type: Jar, dependsOn: classes) {
+    from(sourceSets.main.output)    
+    archiveName = 'node.jar'
+    exclude('**/uwns/bothub/**')
+    exclude('**/uwns/shared/**')
+    manifest {
+	from(generalManifest)
+	attributes ('Main-Class': 'forfun.sandbox.uwns.node.Node')
+    }    
+}
+
+task bothubJar(type: Jar, dependsOn: classes) {
+    from(sourceSets.main.output)
+    archiveName = 'bothub.jar'
+    exclude('**/uwns/node/**')
+    exclude('**/uwns/shared/**')
+    manifest {
+	from(generalManifest)
+	attributes ('Main-Class': 'forfun.sandbox.uwns.bothub.Bothub')
+    }      
+}
+
+artifacts {
+    archives nodeJar, bothubJar
+}
+
+task zip(type: Zip, dependsOn: build) {
+    destinationDir = file("${project.rootDir}\\distribs")
+    from("${project.rootDir}\\assets") 
+    into('bin') {
+        from(bothubJar)
+        from(nodeJar)
+        from(jar)
+    }
+    into('libs') {
+        from(configurations.runtime)
+    }
+    baseName = fileName
+    println 'Build in build/distribs/' + fileName + '.zip'    
+}
+
+task deploy(type: Copy, dependsOn: zip) {
+    def zipFile = file("${project.rootDir}\\distribs\\" + fileName + ".zip")
+    def outputDir = file("${project.rootDir}\\deploy")
+    from zipTree(zipFile)
+    into outputDir
+}
+
+build.finalizedBy(deploy)
